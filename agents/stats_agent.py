@@ -1,4 +1,3 @@
-from langchain.agents import AgentType
 from langchain.agents import create_react_agent
 from langchain.agents import AgentExecutor
 from langchain_groq import ChatGroq
