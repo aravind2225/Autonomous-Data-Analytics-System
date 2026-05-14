@@ -73,7 +73,7 @@ class ChatAgent:
         self.memory = self.memory_manager.get_memory()
 
         self.llm = ChatGroq(
-            model="llama3-70b-8192",
+            model="qwen/qwen3-32b",
             api_key=os.getenv("GROQ_API_KEY"),
             temperature=0
         )
