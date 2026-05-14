@@ -1,19 +1,16 @@
-from langchain.agents import initialize_agent
+from tools.eda_tools import generate_eda
 from langchain.agents import AgentType
+from langchain.agents import create_react_agent
+from langchain.agents import AgentExecutor
 from langchain_groq import ChatGroq
-from dotenv import load_dotenv
 import os
-
-from tools.eda_tools import (
+from tools.cleaning_tools import (
     set_dataframe,
     descriptive_statistics_tool,
     missing_values_tool,
     correlation_analysis_tool,
     categorical_summary_tool
 )
-
-load_dotenv()
-
 
 class EDAAgent:
 
@@ -25,17 +22,47 @@ class EDAAgent:
             temperature=0
         )
 
-        self.agent = initialize_agent(
-            tools=[
-                descriptive_statistics_tool,
-                missing_values_tool,
-                correlation_analysis_tool,
-                categorical_summary_tool
-            ],
-            llm=self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        self.tools = [
+            descriptive_statistics_tool,
+            missing_values_tool,
+            correlation_analysis_tool,
+            categorical_summary_tool
+        ]
+
+        prompt =  """
+            You are an autonomous exploratory data analysis agent.
+
+            You have access to these tools:
+
+            {tools}
+
+            Use the following format:
+
+            Question: input task
+            Thought: reasoning process
+            Action: tool selection
+            Action Input: tool input
+            Observation: result
+            ...
+            Thought: final reasoning
+            Final Answer: final answer
+
+            Question: {input}
+            Thought:{agent_scratchpad}
+            """
+
+        react_agent = create_react_agent(
+            self.llm,
+            self.tools,
+            self.prompt
+        )
+
+        self.agent_executor = AgentExecutor(
+            agent=react_agent,
+            tools=self.tools,
             verbose=True,
-            handle_parsing_errors=True
+            handle_parsing_errors=True,
+            max_iterations=10
         )
 
     def run(self, state):
@@ -44,19 +71,28 @@ class EDAAgent:
 
         set_dataframe(df)
 
-        prompt = f"""
-        You are an autonomous exploratory data analysis agent.
+        response = self.agent_executor.invoke({
+            "input": f"""
+            Perform exploratory data analysis.
 
-        Analyze the dataframe and decide:
-        - which statistical summaries are needed
-        - whether correlation analysis is required
-        - whether categorical summaries should be generated
+            Dataset Shape:
+            {df.shape}
 
-        Use tools intelligently.
-        """
+            Columns:
+            {list(df.columns)}
 
-        result = self.agent.invoke(prompt)
+            Responsibilities:
+
+            - generate descriptive statistics
+            - analyze missing values
+            - detect correlations
+            - summarize categorical features
+            - explain analytical findings
+
+            Use tools autonomously.
+            """
+        })
 
         return {
-            "eda_results": result
+            "eda_results": response
         }

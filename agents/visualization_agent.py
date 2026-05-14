@@ -1,5 +1,6 @@
-from langchain.agents import initialize_agent
 from langchain.agents import AgentType
+from langchain.agents import create_react_agent
+from langchain.agents import AgentExecutor
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 import os
@@ -14,8 +15,6 @@ from tools.visualization_tools import (
     heatmap_tool,
     set_dataframe
 )
-
-load_dotenv()
 
 
 class VisualizationAgent:
@@ -38,12 +37,41 @@ class VisualizationAgent:
             heatmap_tool
         ]
 
-        self.agent = initialize_agent(
+        prompt = """
+            You are an autonomous visualization agent.
+
+            You have access to visualization tools:
+
+            {tools}
+
+            Use the following format:
+
+            Question: user task
+            Thought: reasoning
+            Action: tool selection
+            Action Input: tool input
+            Observation: result
+            ...
+            Thought: final reasoning
+            Final Answer: final answer
+
+            Question: {input}
+            Thought:{agent_scratchpad}
+            """
+        
+
+        react_agent = create_react_agent(
+            self.llm,
+            self.tools,
+            self.prompt
+        )
+
+        self.agent_executor = AgentExecutor(
+            agent=react_agent,
             tools=self.tools,
-            llm=self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
             verbose=True,
-            handle_parsing_errors=True
+            handle_parsing_errors=True,
+            max_iterations=15
         )
 
     def run(self, state):
@@ -57,28 +85,29 @@ class VisualizationAgent:
             "dtypes": df.dtypes.astype(str).to_dict()
         }
 
-        prompt = f"""
-        You are an autonomous visualization agent.
+        response = self.agent_executor.invoke({
+            "input": f"""
+            Analyze dataset schema and autonomously decide:
 
-        Dataset Schema:
-        {schema}
+            - which visualizations should be generated
+            - which chart types are most suitable
+            - which relationships should be analyzed
 
-        Decide which visualization tools should be called.
+            Dataset Schema:
+            {schema}
 
-        Rules:
-        - Use heatmap for multiple numeric columns
-        - Use histogram for distributions
-        - Use scatter plots for relationships
-        - Use box plots for outliers
-        - Use bar charts for category analysis
-        - Use line charts for date/time trends
-        - Use pie charts for categorical proportions
+            Responsibilities:
 
-        Generate the BEST possible visual analytics.
-        """
+            - generate distributions
+            - generate correlation analysis
+            - generate trend charts
+            - generate outlier visualizations
+            - generate categorical analysis charts
 
-        result = self.agent.invoke(prompt)
+            Use visualization tools autonomously.
+            """
+        })
 
         return {
-            "visualization_reasoning": result
+            "visualization_reasoning": response
         }

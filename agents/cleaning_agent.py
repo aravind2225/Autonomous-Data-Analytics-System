@@ -1,5 +1,6 @@
-from langchain.agents import initialize_agent
 from langchain.agents import AgentType
+from langchain.agents import create_react_agent
+from langchain.agents import AgentExecutor
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 import os
@@ -23,17 +24,46 @@ class CleaningAgent:
             api_key=os.getenv("GROQ_API_KEY"),
             temperature=0
         )
-
-        self.agent = initialize_agent(
-            tools=[
+        self.tools = [
                 missing_value_tool,
                 duplicate_removal_tool,
                 outlier_detection_tool
-            ],
-            llm=self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            ]
+
+        prompt = """
+        Answer the following questions as best you can.
+        You have access to the following tools:
+
+        {tools}
+
+        Use the following format:
+
+        Question: the input question you must answer
+        Thought: you should always think about what to do
+        Action: the action to take
+        Action Input: the input to the action
+        Observation: the result of the action
+        ... (this Thought/Action/Action Input/Observation can repeat N times)
+        Thought: I now know the final answer
+        Final Answer: the final answer to the original input question
+
+        Begin!
+
+        Question: {input}
+        Thought:{agent_scratchpad}
+        """
+
+        react_agent = create_react_agent(
+            self.llm,
+            self.tools,
+            prompt
+        )  
+        self.agent = AgentExecutor(
+            agent=react_agent,
+            tools=self.tools,
             verbose=True,
-            handle_parsing_errors=True
+            handle_parsing_errors=True,
+            max_iterations=10
         )
 
     def run(self, state):
