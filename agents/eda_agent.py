@@ -3,6 +3,7 @@ from langchain_classic.agents.agent import AgentExecutor
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 import os
+
 from tools.eda_tools import (
     set_dataframe,
     descriptive_statistics_tool,
@@ -10,6 +11,7 @@ from tools.eda_tools import (
     correlation_analysis_tool,
     categorical_summary_tool
 )
+
 
 class EDAAgent:
 
@@ -32,6 +34,7 @@ class EDAAgent:
         You are an autonomous exploratory data analysis agent.
 
         You have access to the following analytical tools:
+
         {tools}
 
         Use the following format:
@@ -63,18 +66,19 @@ class EDAAgent:
             tools=self.tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=10
+            max_iterations=5
         )
 
     def run(self, state):
 
-        df = state['cleaned_df']
+        try:
 
-        set_dataframe(df)
+            df = state['cleaned_df']
 
-        response = self.agent_executor.invoke({
-            "input": f"""
-            Perform exploratory data analysis.
+            set_dataframe(df)
+
+            query = f"""
+            Perform comprehensive exploratory data analysis.
 
             Dataset Shape:
             {df.shape}
@@ -83,17 +87,25 @@ class EDAAgent:
             {list(df.columns)}
 
             Responsibilities:
-
             - generate descriptive statistics
             - analyze missing values
             - detect correlations
-            - summarize categorical features
-            - explain analytical findings
+            - summarize categorical variables
+            - explain important analytical findings
 
-            Use tools autonomously.
+            Use tools autonomously wherever necessary.
             """
-        })
 
-        return {
-            "eda_results": response
-        }
+            response = self.agent_executor.invoke({
+                "input": query
+            })
+
+            return {
+                "eda_results": response
+            }
+
+        except Exception as e:
+
+            return {
+                "eda_results": f"EDA Agent Error: {str(e)}"
+            }
