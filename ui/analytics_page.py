@@ -22,39 +22,35 @@ def render_analytics(state):
         with st.expander("EDA Agent Results"):
             st.write(state['eda_results'])
 
-    if 'statistics_reasoning_trace' in state:
+    if 'statistical_results' in state:
 
-        with st.expander("Statistical Agent Reasoning"):
-            st.write(state['statistics_reasoning_trace'])
+        with st.expander("Statistical Agent Results"):
+            st.write(state['statistical_results'])
 
     if 'visualization_reasoning' in state:
 
         with st.expander("Visualization Agent Reasoning"):
             st.write(state['visualization_reasoning'])
 
-    if 'insights' in state:
-
-        st.subheader("Business Intelligence Insights")
-
-        st.write(state['insights'])
+    # VISUALIZATIONS
 
     if 'visualizations' in state:
 
         st.subheader("Generated Visualizations")
 
-        for name, fig in state['visualizations'].items():
-            st.plotly_chart(fig, use_container_width=True)
+        for chart_name, fig in state['visualizations'].items():
 
-    col1, col2 = st.columns(2)
+            st.markdown(f"### {chart_name}")
 
-    with col1:
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
 
-        if st.button("Approve Visualizations"):
-            st.session_state.visualization_approved = True
-            st.success("Visualizations approved")
+    # INSIGHTS
 
-    with col2:
+    if 'insights' in state:
 
-        if st.button("Generate Final Insights"):
-            st.session_state.insights_approved = True
-            st.success("Insights generation approved")
+        st.subheader("Executive Business Insights")
+
+        st.write(state['insights'])

@@ -1,18 +1,13 @@
-from langchain_classic.agents.react.agent import create_react_agent
-from langchain_classic.agents.agent import AgentExecutor
-from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
+import plotly.express as px
+import plotly.figure_factory as ff
+import numpy as np
 import os
 
 from tools.visualization_tools import (
-    histogram_tool,
-    scatter_tool,
-    line_chart_tool,
-    bar_chart_tool,
-    pie_chart_tool,
-    box_plot_tool,
-    heatmap_tool,
-    set_dataframe
+    set_dataframe,
+    get_numeric_columns,
+    get_categorical_columns
 )
 
 
@@ -26,100 +21,196 @@ class VisualizationAgent:
             temperature=0
         )
 
-        self.tools = [
-            histogram_tool,
-            scatter_tool,
-            line_chart_tool,
-            bar_chart_tool,
-            pie_chart_tool,
-            box_plot_tool,
-            heatmap_tool
-        ]
-
-        self.prompt = PromptTemplate.from_template("""
-        You are an autonomous data visualization agent.
-
-        You have access to the following visualization tools:
-
-        {tools}
-
-        Use the following format:
-
-        Question: the user task
-        Thought: think about the best visualization strategy
-        Action: one of [{tool_names}]
-        Action Input: input to the selected tool
-        Observation: visualization result
-        ... (repeat if needed)
-        Thought: I now know the final answer
-        Final Answer: explain the generated visualization and insights
-
-        Begin!
-
-        Question: {input}
-
-        Thought: {agent_scratchpad}
-        """)
-
-        react_agent = create_react_agent(
-            self.llm,
-            self.tools,
-            self.prompt
-        )
-
-        self.agent_executor = AgentExecutor(
-            agent=react_agent,
-            tools=self.tools,
-            verbose=True,
-            handle_parsing_errors=True,
-            max_iterations=5
-        )
-
     def run(self, state):
 
         try:
 
-            df = state['cleaned_df']
+            df = state["cleaned_df"]
 
             set_dataframe(df)
 
-            schema = {
-                "columns": list(df.columns),
-                "dtypes": df.dtypes.astype(str).to_dict(),
-                "shape": df.shape
-            }
+            visualizations = {}
 
-            query = f"""
-            Analyze dataset schema and autonomously decide:
+            numeric_cols = get_numeric_columns()
+            categorical_cols = get_categorical_columns()
 
-            - which visualizations should be generated
-            - which chart types are most suitable
-            - which relationships should be analyzed
+            # =====================================================
+            # HISTOGRAM
+            # =====================================================
 
-            Dataset Schema:
-            {schema}
+            if len(numeric_cols) >= 1:
 
-            Responsibilities:
+                hist_col = numeric_cols[0]
 
-            - generate distributions
-            - generate correlation analysis
-            - generate trend charts
-            - generate outlier visualizations
-            - generate categorical analysis charts
+                hist_fig = px.histogram(
+                    df,
+                    x=hist_col,
+                    title=f"Distribution of {hist_col}",
+                    template="plotly_white"
+                )
 
-            Use visualization tools autonomously.
+                visualizations[
+                    f"{hist_col}_distribution"
+                ] = hist_fig
+
+            # =====================================================
+            # SCATTER PLOT
+            # =====================================================
+
+            if len(numeric_cols) >= 2:
+
+                scatter_fig = px.scatter(
+                    df,
+                    x=numeric_cols[0],
+                    y=numeric_cols[1],
+                    title=f"{numeric_cols[0]} vs {numeric_cols[1]}",
+                    template="plotly_white"
+                )
+
+                visualizations[
+                    "scatter_relationship"
+                ] = scatter_fig
+
+            # =====================================================
+            # BAR CHART
+            # =====================================================
+
+            if (
+                len(categorical_cols) >= 1
+                and len(numeric_cols) >= 1
+            ):
+
+                grouped_df = (
+                    df.groupby(categorical_cols[0])[numeric_cols[0]]
+                    .mean()
+                    .reset_index()
+                )
+
+                bar_fig = px.bar(
+                    grouped_df,
+                    x=categorical_cols[0],
+                    y=numeric_cols[0],
+                    title=f"Average {numeric_cols[0]} by {categorical_cols[0]}",
+                    template="plotly_white"
+                )
+
+                visualizations[
+                    "categorical_bar_chart"
+                ] = bar_fig
+
+            # =====================================================
+            # PIE CHART
+            # =====================================================
+
+            if (
+                len(categorical_cols) >= 1
+                and len(numeric_cols) >= 1
+            ):
+
+                pie_df = (
+                    df.groupby(categorical_cols[0])[numeric_cols[0]]
+                    .sum()
+                    .reset_index()
+                )
+
+                pie_fig = px.pie(
+                    pie_df,
+                    names=categorical_cols[0],
+                    values=numeric_cols[0],
+                    title=f"{numeric_cols[0]} Contribution by {categorical_cols[0]}"
+                )
+
+                visualizations[
+                    "pie_distribution"
+                ] = pie_fig
+
+            # =====================================================
+            # BOX PLOT
+            # =====================================================
+
+            if len(numeric_cols) >= 1:
+
+                box_fig = px.box(
+                    df,
+                    y=numeric_cols[0],
+                    title=f"Outlier Analysis of {numeric_cols[0]}",
+                    template="plotly_white"
+                )
+
+                visualizations[
+                    "outlier_boxplot"
+                ] = box_fig
+
+            # =====================================================
+            # HEATMAP
+            # =====================================================
+
+            if len(numeric_cols) >= 2:
+
+                corr = df[numeric_cols].corr()
+
+                heatmap_fig = ff.create_annotated_heatmap(
+                    z=corr.values,
+                    x=list(corr.columns),
+                    y=list(corr.index),
+                    annotation_text=np.round(corr.values, 2),
+                    colorscale="Viridis"
+                )
+
+                heatmap_fig.update_layout(
+                    title="Correlation Heatmap"
+                )
+
+                visualizations[
+                    "correlation_heatmap"
+                ] = heatmap_fig
+
+            # =====================================================
+            # LLM REASONING
+            # =====================================================
+
+            reasoning_prompt = f"""
+            You are an expert data visualization analyst.
+
+            Analyze the generated visualizations and provide:
+
+            - trend analysis
+            - anomaly interpretation
+            - relationship analysis
+            - distribution interpretation
+            - business insights from charts
+
+            Dataset Shape:
+            {df.shape}
+
+            Numeric Columns:
+            {numeric_cols}
+
+            Categorical Columns:
+            {categorical_cols}
+
+            Generated Charts:
+            {list(visualizations.keys())}
+
+            Provide concise but insightful reasoning.
             """
 
-            response = self.agent_executor.invoke({
-                "input": query
-            })
+            reasoning_response = self.llm.invoke(
+                reasoning_prompt
+            )
 
             return {
-                "visualization_reasoning": response
+
+                "visualizations": visualizations,
+
+                "visualization_reasoning":
+                    reasoning_response.content
             }
 
         except Exception as e:
 
             return {
-                "visualization_reasoning": f"Visualization Agent Error: {str(e)}"
+
+                "visualization_reasoning":
+                    f"Visualization Agent Error: {str(e)}"
             }
