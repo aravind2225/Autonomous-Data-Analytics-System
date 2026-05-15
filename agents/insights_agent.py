@@ -1,4 +1,5 @@
 from langchain_groq import ChatGroq
+from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 import os
 
@@ -50,6 +51,7 @@ class InsightsAgent:
 
         Return highly detailed analytical insights.
         """
+        
 
         response = self.llm.invoke(prompt)
 

@@ -1,0 +1,11 @@
+Store_ID,Product_Category,Units_Sold,Unit_Price,Total_Sales
+S101,Electronics,12,450,5400
+S102,Groceries,85,8,680
+S103,Clothing,30,25,750
+S104,Furniture,5,320,1600
+S105,Stationery,120,2,240
+S106,Electronics,8,600,4800
+S107,Groceries,60,10,600
+S108,Clothing,45,18,810
+S109,Furniture,3,750,2250
+S110,Stationery,200,1.5,300

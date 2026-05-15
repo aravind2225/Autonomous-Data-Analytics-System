@@ -1,7 +1,7 @@
-from langchain.agents import create_react_agent
-from langchain.agents import AgentExecutor
+from langchain_classic.agents.react.agent import create_react_agent
+from langchain_classic.agents.agent import AgentExecutor
+from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
-from dotenv import load_dotenv
 import os
 
 from tools.visualization_tools import (
@@ -36,27 +36,32 @@ class VisualizationAgent:
             heatmap_tool
         ]
 
-        prompt = """
-            You are an autonomous visualization agent.
+        self.prompt = PromptTemplate.from_template("""
+        You are an autonomous data visualization agent.
 
-            You have access to visualization tools:
+        You have access to the following visualization tools:
 
-            {tools}
+        {tools}
 
-            Use the following format:
 
-            Question: user task
-            Thought: reasoning
-            Action: tool selection
-            Action Input: tool input
-            Observation: result
-            ...
-            Thought: final reasoning
-            Final Answer: final answer
+        Use the following format:
 
-            Question: {input}
-            Thought:{agent_scratchpad}
-            """
+        Question: the user task
+        Thought: think about the best visualization strategy
+        Action: one of [{tool_names}]
+        Action Input: input to the selected tool
+        Observation: visualization result
+        ... (repeat if needed)
+        Thought: I now know the final answer
+        Final Answer: explain the generated visualization and insights
+
+        Begin!
+
+        Question: {input}
+
+        Thought: {agent_scratchpad}
+        """
+        )
         
 
         react_agent = create_react_agent(

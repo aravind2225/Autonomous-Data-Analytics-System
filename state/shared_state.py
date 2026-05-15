@@ -3,6 +3,7 @@ import pandas as pd
 
 
 class SharedState(TypedDict, total=False):
+    file: any
     uploaded_df: pd.DataFrame
     cleaned_df: pd.DataFrame
     metadata: Dict[str, Any]

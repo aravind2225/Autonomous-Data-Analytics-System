@@ -1,4 +1,5 @@
 from langchain_groq import ChatGroq
+from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 import os
 
@@ -17,7 +18,7 @@ class SupervisorAgent:
 
     def decide_next_step(self, state):
 
-        prompt = f"""
+        prompt = PromptTemplate.from_template("""
         You are a supervisor agent.
 
         Decide the next best analytics step.
@@ -35,6 +36,7 @@ class SupervisorAgent:
 
         Return only one next step.
         """
+        )
 
         response = self.llm.invoke(prompt)
 

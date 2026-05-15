@@ -1,7 +1,7 @@
-from langchain.agents import create_react_agent
-from langchain.agents import AgentExecutor
+from langchain_classic.agents.react.agent import create_react_agent
+from langchain_classic.agents.agent import AgentExecutor
+from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
-from dotenv import load_dotenv
 import os
 
 from tools.stats_tools import (
@@ -30,33 +30,35 @@ class StatsAgent:
             anomaly_detection_tool
         ]
 
-        prompt = """
-Answer the following questions as best you can.
-You have access to the following tools:
+        self.prompt = PromptTemplate.from_template("""
+        You are an autonomous statistical analysis agent.
 
-{tools}
+        You have access to the following tools:
 
-Use the following format:
+        {tools}
 
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: the action to take
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
+        Use the following format:
 
-Begin!
+        Question: the user query
+        Thought: think about the statistical approach
+        Action: one of [{tool_names}]
+        Action Input: tool input
+        Observation: tool result
+        ... (repeat as necessary)
+        Thought: I now know the final answer
+        Final Answer: provide the final statistical interpretation
 
-Question: {input}
-Thought:{agent_scratchpad}
-"""
+        Begin!
+
+        Question: {input}
+
+        Thought: {agent_scratchpad}
+        """)
 
         react_agent = create_react_agent(
             self.llm,
             self.tools,
-            prompt
+            self.prompt
         )  
         self.agent = AgentExecutor(
             agent=react_agent,
@@ -82,7 +84,7 @@ Thought:{agent_scratchpad}
             "shape": df.shape
         }
 
-        prompt = f"""
+        prompt = PromptTemplate.from_template("""
         You are an autonomous statistical analysis agent.
 
         Dataset Information:
@@ -111,6 +113,7 @@ Thought:{agent_scratchpad}
         - Explain why each statistical test is selected
         - Return analytical conclusions
         """
+        )
 
         response = self.agent.invoke(prompt)
 

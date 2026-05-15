@@ -1,11 +1,13 @@
-from langchain.agents import create_react_agent
-from langchain.agents import AgentExecutor
+from langchain_classic.agents.react.agent import create_react_agent
+from langchain_classic.agents.agent import AgentExecutor
+from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 import os
 
 from tools.cleaning_tools import (
     set_dataframe,
+    get_dataframe,
     missing_value_tool,
     duplicate_removal_tool,
     outlier_detection_tool
@@ -29,40 +31,41 @@ class CleaningAgent:
                 outlier_detection_tool
             ]
 
-        prompt = """
-        Answer the following questions as best you can.
+        self.prompt = PromptTemplate.from_template("""
+        You are an autonomous data cleaning agent.
+
         You have access to the following tools:
 
         {tools}
-
         Use the following format:
 
-        Question: the input question you must answer
-        Thought: you should always think about what to do
-        Action: the action to take
-        Action Input: the input to the action
-        Observation: the result of the action
-        ... (this Thought/Action/Action Input/Observation can repeat N times)
+        Question: the user query or task
+        Thought: think carefully about what to do
+        Action: one of [{tool_names}]
+        Action Input: input to the selected tool
+        Observation: result returned by the tool
+        ... (this Thought/Action/Action Input/Observation can repeat multiple times)
         Thought: I now know the final answer
-        Final Answer: the final answer to the original input question
+        Final Answer: provide a clear and concise final response
 
         Begin!
 
         Question: {input}
-        Thought:{agent_scratchpad}
-        """
+
+        Thought: {agent_scratchpad}
+        """)
 
         react_agent = create_react_agent(
             self.llm,
             self.tools,
-            prompt
+            self.prompt
         )  
         self.agent = AgentExecutor(
             agent=react_agent,
             tools=self.tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=10
+            max_iterations=5
         )
 
     def run(self, state):
@@ -71,7 +74,7 @@ class CleaningAgent:
 
         set_dataframe(df)
 
-        prompt = f"""
+        query = f"""
         You are a professional data cleaning agent.
 
         Analyze dataset schema and autonomously decide:
@@ -88,9 +91,13 @@ class CleaningAgent:
         Use tools autonomously.
         """
 
-        response = self.agent.invoke(prompt)
+        response = self.agent.invoke({
+            "input": query
+        })
+
+        cleaned_df = get_dataframe()
 
         return {
-            "cleaned_df": df,
-            "cleaning_reasoning": response
-        }
+        "cleaned_df": cleaned_df,
+        "cleaning_reasoning": response
+    }

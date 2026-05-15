@@ -11,6 +11,28 @@ def set_dataframe(df):
     global GLOBAL_DF
     GLOBAL_DF = df
 
+@tool
+def histogram_tool(column: str):
+    """Generate histogram for numeric column."""
+
+    fig = px.histogram(GLOBAL_DF, x=column)
+
+    return fig
+
+
+@tool
+def scatter_tool(columns: str):
+    """Generate scatter plot using two numeric columns separated by comma."""
+
+    x, y = columns.split(",")
+
+    fig = px.scatter(
+        GLOBAL_DF,
+        x=x.strip(),
+        y=y.strip()
+    )
+
+    return fig
 
 
 @tool

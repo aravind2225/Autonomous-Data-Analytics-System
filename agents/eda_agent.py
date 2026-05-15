@@ -1,8 +1,9 @@
-from langchain.agents import create_react_agent
-from langchain.agents import AgentExecutor
+from langchain_classic.agents.react.agent import create_react_agent
+from langchain_classic.agents.agent import AgentExecutor
+from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 import os
-from tools.cleaning_tools import (
+from tools.eda_tools import (
     set_dataframe,
     descriptive_statistics_tool,
     missing_values_tool,
@@ -27,27 +28,29 @@ class EDAAgent:
             categorical_summary_tool
         ]
 
-        prompt =  """
-            You are an autonomous exploratory data analysis agent.
+        self.prompt = PromptTemplate.from_template("""
+        You are an autonomous exploratory data analysis agent.
 
-            You have access to these tools:
+        You have access to the following analytical tools:
+        {tools}
 
-            {tools}
+        Use the following format:
 
-            Use the following format:
+        Question: the user task or query
+        Thought: reason about the analysis approach
+        Action: one of [{tool_names}]
+        Action Input: input to the selected tool
+        Observation: result from the tool
+        ... (this process can repeat multiple times)
+        Thought: I now know the final answer
+        Final Answer: provide analytical insights clearly
 
-            Question: input task
-            Thought: reasoning process
-            Action: tool selection
-            Action Input: tool input
-            Observation: result
-            ...
-            Thought: final reasoning
-            Final Answer: final answer
+        Begin!
 
-            Question: {input}
-            Thought:{agent_scratchpad}
-            """
+        Question: {input}
+
+        Thought: {agent_scratchpad}
+        """)
 
         react_agent = create_react_agent(
             self.llm,

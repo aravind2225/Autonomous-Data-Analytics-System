@@ -1,8 +1,9 @@
 import os
 from dotenv import load_dotenv
-from langchain import hub
-from langchain.agents import AgentExecutor, create_react_agent
+from langchain_classic.agents.react.agent import create_react_agent
+from langchain_classic.agents.agent import AgentExecutor
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
+from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 
 # Assuming these are defined correctly in your local files
@@ -46,7 +47,7 @@ class ChatAgent:
 
         # Get the standard ReAct prompt from LangChain Hub
         # You can customize this prompt to tell the agent how to use the tools
-        prompt = """
+        prompt = PromptTemplate.from_template("""
 Assistant is a large language model trained by OpenAI.
 
 Assistant is designed to be able to assist with a wide range of tasks, from answering simple questions to providing in-depth explanations and discussions on a wide range of topics. As a language model, Assistant is able to generate human-like text based on the input it receives, allowing it to engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at hand.
@@ -66,7 +67,7 @@ To use a tool, please use the following format:
 
 ```
 Thought: Do I need to use a tool? Yes
-Action: the action to take, should be one of [{tool_names}]
+Action: the action to take, should be one of [{tools_names}]
 Action Input: the input to the action
 Observation: the result of the action
 ```
@@ -86,6 +87,7 @@ Previous conversation history:
 New input: {input}
 {agent_scratchpad}
 """
+        )
 
         # Create the ReAct agent
         agent = create_react_agent(
@@ -136,6 +138,7 @@ New input: {input}
 
         Generate final analytical response.
         """
+
 
         response = conversational_agent.invoke({
             "input": final_prompt
