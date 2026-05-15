@@ -43,7 +43,6 @@ class VisualizationAgent:
 
         {tools}
 
-
         Use the following format:
 
         Question: the user task
@@ -60,9 +59,7 @@ class VisualizationAgent:
         Question: {input}
 
         Thought: {agent_scratchpad}
-        """
-        )
-        
+        """)
 
         react_agent = create_react_agent(
             self.llm,
@@ -75,22 +72,24 @@ class VisualizationAgent:
             tools=self.tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=15
+            max_iterations=5
         )
 
     def run(self, state):
 
-        df = state['cleaned_df']
+        try:
 
-        set_dataframe(df)
+            df = state['cleaned_df']
 
-        schema = {
-            "columns": list(df.columns),
-            "dtypes": df.dtypes.astype(str).to_dict()
-        }
+            set_dataframe(df)
 
-        response = self.agent_executor.invoke({
-            "input": f"""
+            schema = {
+                "columns": list(df.columns),
+                "dtypes": df.dtypes.astype(str).to_dict(),
+                "shape": df.shape
+            }
+
+            query = f"""
             Analyze dataset schema and autonomously decide:
 
             - which visualizations should be generated
@@ -110,8 +109,17 @@ class VisualizationAgent:
 
             Use visualization tools autonomously.
             """
-        })
 
-        return {
-            "visualization_reasoning": response
-        }
+            response = self.agent_executor.invoke({
+                "input": query
+            })
+
+            return {
+                "visualization_reasoning": response
+            }
+
+        except Exception as e:
+
+            return {
+                "visualization_reasoning": f"Visualization Agent Error: {str(e)}"
+            }
