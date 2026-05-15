@@ -31,22 +31,30 @@ class EDAAgent:
         ]
 
         self.prompt = PromptTemplate.from_template("""
-        You are an autonomous exploratory data analysis agent.
+        You are an exploratory data analysis agent.
 
-        You have access to the following analytical tools:
+        You have access to the following tools:
 
         {tools}
 
+        IMPORTANT RULES:
+
+        - Use only the necessary tools.
+        - Do not repeatedly call the same tool.
+        - After sufficient analysis, ALWAYS provide Final Answer.
+        - Never loop indefinitely.
+        - Maximum tool usage should usually be 3 to 4 actions.
+
         Use the following format:
 
-        Question: the user task or query
-        Thought: reason about the analysis approach
+        Question: the user task
+        Thought: reasoning about next step
         Action: one of [{tool_names}]
-        Action Input: input to the selected tool
-        Observation: result from the tool
-        ... (this process can repeat multiple times)
+        Action Input: tool input
+        Observation: result from tool
+        ... (repeat only if necessary)
         Thought: I now know the final answer
-        Final Answer: provide analytical insights clearly
+        Final Answer: provide concise analytical insights
 
         Begin!
 
@@ -78,7 +86,7 @@ class EDAAgent:
             set_dataframe(df)
 
             query = f"""
-            Perform comprehensive exploratory data analysis.
+            Perform exploratory data analysis on this dataset.
 
             Dataset Shape:
             {df.shape}
@@ -86,14 +94,15 @@ class EDAAgent:
             Columns:
             {list(df.columns)}
 
-            Responsibilities:
-            - generate descriptive statistics
-            - analyze missing values
-            - detect correlations
-            - summarize categorical variables
-            - explain important analytical findings
+            Tasks:
+            1. Generate descriptive statistics
+            2. Analyze missing values
+            3. Analyze correlations
+            4. Summarize one important categorical column
+            5. Provide final analytical insights
 
-            Use tools autonomously wherever necessary.
+            Use only the necessary tools.
+            Always end with Final Answer.
             """
 
             response = self.agent_executor.invoke({
